@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="description" content="종이에 마음을 적어 친구에게 던져보세요.">
+<title>종이비행</title>
+<link rel="stylesheet" href="style.css">
+<link rel="preload" href="frames/spin.webp" as="image" crossorigin>
+<link rel="preload" href="frames/open.webp" as="image" crossorigin>
+<link rel="preload" href="frames/open-uv.png" as="image" crossorigin>
+<link rel="preload" href="frames/flat.webp" as="image" crossorigin>
+<script type="module" src="app.js"></script>
+</head>
+<body>
+<main data-mode="loading">
+<section class="studio" aria-label="종이 비행 화면">
+<canvas id="paper" aria-hidden="true"></canvas>
+<div id="paper-position">
+<div id="paper-surface">
+<img id="writing-paper" src="frames/flat.webp" alt="" crossorigin draggable="false" hidden>
+<article id="paper-ink" aria-label="받은 메시지" aria-hidden="true" tabindex="-1" hidden></article>
+</div>
+</div>
+<svg id="guide" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true" hidden><path/></svg>
+<button id="catch" class="catch" type="button" aria-label="종이 펼치기" hidden></button>
+<svg id="unfold-light" viewBox="0 0 160 160" aria-hidden="true">
+  <path class="flash-ray" d="M80 7c1 49 18 70 71 73-53 3-70 24-71 73-2-49-19-70-71-73 52-3 69-24 71-73Z"/>
+  <path class="flash-sparks" d="M128 21v16m-8-8h16M35 115v14m-7-7h14M125 117v24m-12-12h24M42 23v12m-6-6h12"/>
+</svg>
+</section>
+<aside>
+<form id="compose" hidden>
+<label for="message">메시지</label>
+<textarea id="message" maxlength="400" required></textarea>
+<button class="primary" type="submit">종이 구기기</button>
+</form>
+<div id="editor" hidden>
+<div class="controls">
+  <button id="preview" class="icon-button" type="button" aria-label="미리보기" title="미리보기">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5.5 19 12 9 18.5Z"/></svg>
+  </button>
+  <button id="reset" class="icon-button" type="button" aria-label="다시 그리기" title="다시 그리기">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 4.4-.9L20 7.5 16.5 4 4.9 15.6ZM14.3 6.2l3.5 3.5"/><path d="M13 20h7"/></svg>
+  </button>
+</div>
+<button id="share" class="primary" type="button">공유 링크 만들기</button>
+<button id="edit" class="quiet" type="button">메시지 수정</button>
+</div>
+<div id="link-panel" hidden><label for="link">공유 링크</label><input id="link" readonly><button id="copy" class="primary" type="button">링크 복사</button><button id="back" class="quiet" type="button">궤적 수정</button></div>
+<button id="reply" class="icon-button" type="button" aria-label="답장하기" title="답장하기" hidden>
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 3-7.2 18-3.4-7.4L3 10.2 21 3Z"/><path d="m10.4 13.6 5.2-5.2"/></svg>
+</button>
+<p id="status" role="status"></p>
+</aside>
+</main>
+<span id="announcement" class="sr-only" role="status"></span>
+</body>
+</html>
