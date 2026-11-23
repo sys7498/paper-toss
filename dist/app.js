@@ -3,6 +3,7 @@ import { createFlight, smoothPath } from './flight.js';
 import { createPaperWords, loadInkFont } from './ink.js';
 import { openSurface } from './paper-surface.js';
 import { createWritingWind } from './writing-wind.js';
+import { createShareLink, isLetterLink, readShareLink } from './share-link.js';
 
 const el = (id) => document.getElementById(id);
 const studio = document.querySelector('.studio');
@@ -297,44 +298,28 @@ el('preview').onclick = async () => {
   screen('editor');
 };
 
-function shareURL() {
-  const packed = path.flatMap(([x, y]) => [Math.round(x * 1000), Math.round(y * 1000)]);
-  const data = new TextEncoder().encode(JSON.stringify([message, packed]));
-  const encoded = btoa(String.fromCharCode(...data)).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
-  const url = new URL(location.href);
-  url.hash = 'p=' + encoded;
-  url.search = '';
-  return url.href;
-}
-
-function readLink() {
-  if (!location.hash.startsWith('#p=')) return null;
-  try {
-    const encoded = location.hash.slice(3);
-    if (encoded.length > 9000) return null;
-    const data = Uint8Array.from(atob(encoded.replaceAll('-', '+').replaceAll('_', '/')), (c) => c.charCodeAt(0));
-    const [note, coords] = JSON.parse(new TextDecoder().decode(data));
-    if (typeof note !== 'string' || !note.trim() || note.length > 400 || !Array.isArray(coords) ||
-        coords.length < 4 || coords.length > 144 || coords.length % 2 ||
-        !coords.every((n) => Number.isInteger(n) && n >= 0 && n <= 1000)) return null;
-    const points = [];
-    for (let i = 0; i < coords.length; i += 2) points.push([clamp(coords[i] / 1000, .06, .94), clamp(coords[i + 1] / 1000, .1, .9)]);
-    return { note, points };
-  } catch {
-    return null;
-  }
-}
-
 el('share').onclick = async () => {
   if (previewing || pointer !== null) return;
   previewing = true;
   showGuide(path, false);
   el('announcement').textContent = '종이 던지는 중';
   if (!await flight(false)) return;
-  previewing = false;
-  el('link').value = shareURL();
-  screen('link');
-  el('copy').focus();
+  const current = generation;
+  el('announcement').textContent = '공유 링크 만드는 중';
+  try {
+    const url = await createShareLink(message, path);
+    if (current !== generation) return;
+    el('link').value = url;
+    screen('link');
+    el('copy').focus();
+  } catch {
+    if (current !== generation) return;
+    screen('editor');
+    at(path[0], {rotation: restRotation});
+    el('status').textContent = '링크를 만들지 못했어요. 다시 눌러 주세요.';
+  } finally {
+    if (current === generation) previewing = false;
+  }
 };
 const canShare = typeof window.navigator.share === 'function';
 if (canShare) el('copy').textContent = '링크 공유';
@@ -432,25 +417,37 @@ async function receive() {
   screen('arrived');
 }
 
-function loadLocation() {
-  const incoming = readLink();
-  if (incoming) {
-    generation++;
+async function loadLocation() {
+  const hash = location.hash;
+  const current = ++generation;
+  let error = '';
+  delete studio.dataset.opening;
+  if (isLetterLink(hash)) {
     previewing = false;
     pointer = null;
     draftPath = null;
-    delete studio.dataset.opening;
+    screen('loading');
+    canvas.style.visibility = 'hidden';
     setInk('');
-    message = incoming.note;
-    path = incoming.points;
-    receive();
-    return;
+    try {
+      const incoming = await readShareLink(hash);
+      if (current !== generation) return;
+      if (incoming) {
+        message = incoming.note;
+        path = incoming.points;
+        receive();
+        return;
+      }
+      error = '메시지 링크를 찾을 수 없어요.';
+    } catch {
+      if (current !== generation) return;
+      error = '메시지를 불러오지 못했어요. 새로고침해 주세요.';
+    }
   }
   message = '';
   path = defaultPath;
-  delete studio.dataset.opening;
   startCompose();
-  if (location.hash.startsWith('#p=')) el('status').textContent = '메시지 링크가 손상되었어요.';
+  if (error) el('status').textContent = error;
 }
 
 window.addEventListener('hashchange', loadLocation);
