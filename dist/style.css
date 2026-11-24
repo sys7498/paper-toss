@@ -56,6 +56,19 @@ main[data-mode=compose] #paper-surface { will-change: transform; }
   white-space: pre;
   line-height: 1;
 }
+#letter-image {
+  position: absolute;
+  left: 11.4%;
+  top: 11%;
+  width: 77.2%;
+  height: 78%;
+  object-fit: contain;
+  pointer-events: none;
+}
+#paper-ink.has-caption #letter-image {
+  height: 38%;
+  object-position: center bottom;
+}
 main[data-mode=opened] #paper-ink { pointer-events: auto; }
 #guide { display: none; }
 main[data-mode=editor] #guide:not([hidden]) { display: block; }
@@ -94,6 +107,12 @@ textarea, input {
   font: inherit;
 }
 textarea { display: block; min-height: 90px; resize: vertical; }
+.hint { margin: 0 0 10px; color: #cfcdc7; font-size: .875rem; line-height: 1.45; }
+.attachments { display: flex; flex-wrap: wrap; align-items: center; gap: 0 18px; }
+.attachments button { margin: 0; }
+#add-image { display: inline-flex; align-items: center; gap: 7px; }
+#add-image svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linejoin: round; }
+#compose .primary { margin-top: 3px; }
 button { min-height: 44px; border: 0; border-radius: 999px; padding: 9px 12px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
 button:disabled { opacity: .6; cursor: default; }
 button:hover:not(:disabled) { text-decoration: underline; }
@@ -194,4 +213,5 @@ aside {
     grid-template-rows: minmax(110px, 1fr) auto;
   }
   main[data-keyboard] aside { min-height: 0; padding-bottom: 12px; }
+  main[data-keyboard] #compose-hint { display: none; }
 }

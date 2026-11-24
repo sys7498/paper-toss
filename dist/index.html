@@ -20,7 +20,10 @@
 <div id="paper-position">
 <div id="paper-surface">
 <img id="writing-paper" src="frames/flat.webp" alt="" crossorigin draggable="false" hidden>
-<article id="paper-ink" aria-label="받은 메시지" aria-hidden="true" tabindex="-1" hidden></article>
+<article id="paper-ink" aria-label="받은 편지" aria-hidden="true" tabindex="-1" hidden>
+<img id="letter-image" alt="첨부 사진" hidden>
+<div id="letter-text"></div>
+</article>
 </div>
 </div>
 <svg id="guide" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true" hidden><path/></svg>
@@ -32,11 +35,20 @@
 </section>
 <aside>
 <form id="compose" hidden>
-<label for="message">메시지</label>
-<textarea id="message" maxlength="400" required></textarea>
+<p id="compose-hint" class="hint">편지를 쓰고, 날아갈 길을 그려 친구에게 보내세요.</p>
+<textarea id="message" aria-label="메시지" placeholder="친구에게 보낼 말" maxlength="400"></textarea>
+<div class="attachments">
+  <input id="image-file" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif,.heic,.heif" hidden>
+  <button id="add-image" class="quiet" type="button">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="3"/><path d="m4 16 5-5 4 4 3-3 4 4"/><circle cx="15.5" cy="9" r="1"/></svg>
+    <span>사진·GIF 추가</span>
+  </button>
+  <button id="remove-image" class="quiet" type="button" hidden>사진 삭제</button>
+</div>
 <button class="primary" type="submit">종이 구기기</button>
 </form>
 <div id="editor" hidden>
+<p class="hint">화면에 종이가 날아갈 길을 그려 보세요.</p>
 <div class="controls">
   <button id="preview" class="icon-button" type="button" aria-label="미리보기" title="미리보기">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5.5 19 12 9 18.5Z"/></svg>

@@ -181,9 +181,9 @@ export function createPaper(canvas) {
     rim.target.position.copy(mesh.position);
     renderer.render(scene, camera);
   }
-  function write(text, refresh) {
+  function write(text, refresh, hasImage) {
     hasInk = Boolean(text.trim());
-    if (ink.write(text, refresh)) inkMap.needsUpdate = true;
+    if (ink.write(text, refresh, hasImage)) inkMap.needsUpdate = true;
   }
   function begin() {
     if (motionCount === 0) frames.begin();
@@ -288,8 +288,8 @@ function createCanvasPaper(canvas) {
     }
     ctx.globalAlpha = 1;
   }
-  function write(text, refresh) {
-    if (ink.write(text, refresh)) frames.invalidateInk();
+  function write(text, refresh, hasImage) {
+    if (ink.write(text, refresh, hasImage)) frames.invalidateInk();
     hasInk = Boolean(text.trim());
   }
   function begin() {

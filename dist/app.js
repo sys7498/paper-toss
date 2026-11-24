@@ -4,11 +4,17 @@ import { createPaperWords, loadInkFont } from './ink.js';
 import { openSurface } from './paper-surface.js';
 import { createWritingWind } from './writing-wind.js';
 import { createShareLink, isLetterLink, readShareLink } from './share-link.js';
+import { prepareImage } from './letter-image.js';
 
 const el = (id) => document.getElementById(id);
 const studio = document.querySelector('.studio');
 const main = document.querySelector('main');
+const compose = el('compose');
 const messageInput = el('message');
+const imageInput = el('image-file');
+const addImage = el('add-image');
+const removeImage = el('remove-image');
+const foldButton = compose.querySelector('[type=submit]');
 const coarsePointer = matchMedia('(pointer: coarse)');
 const guide = el('guide');
 const canvas = el('paper');
@@ -16,7 +22,8 @@ const paper = createPaper(canvas);
 const writingPaper = el('writing-paper');
 const paperPosition = el('paper-position');
 const paperInk = el('paper-ink');
-const writeWords = createPaperWords(paperInk);
+const letterImage = el('letter-image');
+const writeWords = createPaperWords(el('letter-text'));
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const setWindSize = createWritingWind(el('paper-surface'), reducedMotion);
 const near = [.5, .47];
@@ -25,6 +32,9 @@ const defaultPath = [near, [.52, .32], [.57, .23], [.70, .22], [.82, .30], [.89,
 const clamp = (x, min, max) => Math.max(min, Math.min(max, x));
 let path = defaultPath;
 let message = '';
+let messageImage = null;
+let draftImage = null;
+let imageSelection = 0;
 let mode = '';
 let generation = 0;
 let previewing = false;
@@ -32,9 +42,11 @@ let pointer = null;
 let draftPath = null;
 let pose;
 let inkText = '';
+let paperImage = null;
+let paperImageUrl = null;
 
 function positionWords() {
-  const showWords = pose?.folded === 0 && Boolean(inkText.trim());
+  const showWords = pose?.folded === 0 && Boolean(paperImage || inkText.trim());
   paperInk.hidden = !showWords;
   if (!showWords) return;
   const unit = Math.min(studio.clientWidth, studio.clientHeight) * focalRatio / nearPlane;
@@ -72,18 +84,30 @@ paper.resize();
 
 function setWords(text, refresh = false) {
   inkText = text;
-  writeWords(text, refresh);
+  paperInk.classList.toggle('has-caption', Boolean(text.trim()));
+  writeWords(text, refresh, Boolean(paperImage));
   positionWords();
+}
+
+function setPaperImage(image) {
+  if (paperImage === image) return;
+  if (paperImageUrl) URL.revokeObjectURL(paperImageUrl);
+  paperImage = image;
+  paperImageUrl = image ? URL.createObjectURL(image) : null;
+  if (paperImageUrl) letterImage.src = paperImageUrl;
+  else letterImage.removeAttribute('src');
+  letterImage.hidden = !image;
+  setWords(inkText);
 }
 
 function setInk(text) {
   setWords(text);
-  paper.write(text);
+  paper.write(text, false, Boolean(messageImage));
 }
 loadInkFont().then(() => {
   if (!inkText) return;
   setWords(inkText, true);
-  if (mode !== 'compose' || pose?.folded !== 0) paper.write(inkText, true);
+  if (mode !== 'compose' || pose?.folded !== 0) paper.write(inkText, true, Boolean(messageImage));
 });
 
 function showGuide(points, visible) {
@@ -154,11 +178,14 @@ function at(point, options = {}) {
 
 function startCompose() {
   generation++;
+  imageSelection++;
   previewing = false;
   pointer = null;
   draftPath = null;
+  foldButton.disabled = messageInput.readOnly = addImage.disabled = removeImage.disabled = false;
   screen('compose');
-  setWords(el('message').value);
+  updateMessage();
+  setDraftImage(draftImage);
   at(near, {folded: 0, rotation: flatRotation, creased: true});
 }
 
@@ -212,23 +239,56 @@ function flight(receiving) {
 }
 
 function updateMessage() {
-  const text = el('message').value;
-  el('message').setCustomValidity('');
-  if (mode === 'compose') setWords(text);
+  messageInput.setCustomValidity('');
+  if (mode === 'compose') setWords(messageInput.value);
 }
-el('message').addEventListener('input', updateMessage);
-el('message').addEventListener('compositionend', updateMessage);
-el('compose').addEventListener('submit', async (event) => {
+
+function setDraftImage(image) {
+  draftImage = image;
+  addImage.querySelector('span').textContent = image ? '사진·GIF 바꾸기' : '사진·GIF 추가';
+  removeImage.hidden = !image;
+  setPaperImage(image);
+}
+
+addImage.onclick = () => imageInput.click();
+removeImage.onclick = () => {
+  imageSelection++;
+  foldButton.disabled = false;
+  setDraftImage(null);
+  el('status').textContent = '';
+};
+imageInput.onchange = async () => {
+  const file = imageInput.files[0];
+  imageInput.value = '';
+  if (!file || mode !== 'compose') return;
+  const selection = ++imageSelection;
+  foldButton.disabled = true;
+  el('status').textContent = '';
+  try {
+    const image = await prepareImage(file);
+    if (selection !== imageSelection || mode !== 'compose') return;
+    setDraftImage(image);
+    messageInput.setCustomValidity('');
+  } catch (error) {
+    if (selection === imageSelection && mode === 'compose') el('status').textContent = error.message;
+  } finally {
+    if (selection === imageSelection && mode === 'compose') foldButton.disabled = false;
+  }
+};
+
+messageInput.addEventListener('input', updateMessage);
+messageInput.addEventListener('compositionend', updateMessage);
+compose.addEventListener('submit', async (event) => {
   event.preventDefault();
-  message = el('message').value.trim();
-  if (!message) {
-    el('message').setCustomValidity('메시지를 입력해 주세요.');
-    el('message').reportValidity();
+  if (foldButton.disabled) return;
+  message = messageInput.value.trim();
+  messageImage = draftImage;
+  if (!message && !messageImage) {
+    messageInput.setCustomValidity('메시지를 쓰거나 사진을 넣어 주세요.');
+    messageInput.reportValidity();
     return;
   }
-  const button = event.submitter;
-  const input = el('message');
-  button.disabled = input.readOnly = true;
+  foldButton.disabled = messageInput.readOnly = addImage.disabled = removeImage.disabled = true;
   setInk(message);
   showGuide(path, false);
   const finished = await animate(790, (t) => {
@@ -239,7 +299,6 @@ el('compose').addEventListener('submit', async (event) => {
       rotation: restRotation.map((angle, axis) => flatRotation[axis] + (angle - flatRotation[axis]) * eased)
     });
   });
-  button.disabled = input.readOnly = false;
   if (!finished) return;
   screen('editor');
 });
@@ -307,7 +366,7 @@ el('share').onclick = async () => {
   const current = generation;
   el('announcement').textContent = '공유 링크 만드는 중';
   try {
-    const url = await createShareLink(message, path);
+    const url = await createShareLink(message, path, messageImage);
     if (current !== generation) return;
     el('link').value = url;
     screen('link');
@@ -351,8 +410,10 @@ el('reply').onclick = () => {
   history.replaceState(null, '', location.pathname + location.search);
   path = defaultPath;
   message = '';
+  messageImage = draftImage = null;
+  messageInput.value = '';
   startCompose();
-  el('message').focus();
+  messageInput.focus();
 };
 function openPaper() {
   if (mode !== 'arrived' || el('catch').hidden) return;
@@ -370,6 +431,7 @@ function openPaper() {
   }).then((finished) => {
     if (!finished) return;
     delete studio.dataset.opening;
+    setPaperImage(messageImage);
     screen('opened');
     paperInk.focus({preventScroll: true});
   });
@@ -398,7 +460,7 @@ function waitForFlight() {
             if (document.hidden) return;
             document.removeEventListener('visibilitychange', schedule);
             resolve(current === generation);
-          }, 3000);
+          }, 1000);
         });
       });
     }
@@ -421,6 +483,7 @@ async function loadLocation() {
   const hash = location.hash;
   const current = ++generation;
   let error = '';
+  messageImage = null;
   delete studio.dataset.opening;
   if (isLetterLink(hash)) {
     previewing = false;
@@ -428,12 +491,14 @@ async function loadLocation() {
     draftPath = null;
     screen('loading');
     canvas.style.visibility = 'hidden';
+    setPaperImage(null);
     setInk('');
     try {
       const incoming = await readShareLink(hash);
       if (current !== generation) return;
       if (incoming) {
         message = incoming.note;
+        messageImage = incoming.image;
         path = incoming.points;
         receive();
         return;
